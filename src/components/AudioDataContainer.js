@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import styles from "./audioDataContainer.module.css";
+import Visualiser from "./Visualiser";
 
 /*
 fftSize
@@ -11,22 +11,18 @@ const totalBands = fftSize / 2 - 1;
 
 export default function AudioDataContainer() {
   const [ampVals, setAmpVals] = useState([...Array(totalBands).fill(0)]);
-  const [avgAmp, setAvgAmp] = useState(0);
 
   const audioDataRef = useRef(null);
   const audioFileRef = useRef(null);
-  const audioContextRef = useRef(null);
 
   const init = () => {
     audioFileRef.current = new Audio();
-    audioContextRef.current = new AudioContext();
-    const source = audioContextRef.current.createMediaElementSource(
-      audioFileRef.current
-    );
-    const analyser = audioContextRef.current.createAnalyser();
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaElementSource(audioFileRef.current);
+    const analyser = audioContext.createAnalyser();
     audioFileRef.current.src = "./audio/theWent-edit-2.mp3";
     analyser.fftSize = fftSize;
-    source.connect(audioContextRef.current.destination);
+    source.connect(audioContext.destination);
     source.connect(analyser);
     audioDataRef.current = analyser;
   };
@@ -39,19 +35,7 @@ export default function AudioDataContainer() {
     const arr = Array.from(newAmplitudeData).slice(0, totalBands);
     setAmpVals(arr);
 
-    const total = arr.reduce((runningTotal, currVal) => runningTotal + currVal);
-    const avg = total / arr.length;
-    setAvgAmp(avg);
-
     requestAnimationFrame(runSpectrum);
-
-    // this allows the bars to return to starting position
-    // because it takes a few frames for the buffer frequencies
-    // to return to zero
-    // const pausedAndAtZero = audioFileRef.current.paused && avgAmp === 0;
-    // if (!pausedAndAtZero) {
-    //   requestAnimationFrame(runSpectrum);
-    // }
   }
 
   const onStart = () => {
@@ -61,7 +45,6 @@ export default function AudioDataContainer() {
       requestAnimationFrame(runSpectrum);
     } else if (audioFileRef.current.paused) {
       audioFileRef.current.play();
-      requestAnimationFrame(runSpectrum);
     } else {
       audioFileRef.current.pause();
     }
@@ -70,13 +53,7 @@ export default function AudioDataContainer() {
   return (
     <div>
       <button onClick={onStart}>play / pause</button>
-      <div className={styles.bar} style={{ width: avgAmp + "px" }} />
-
-      <div className={styles.frequencyBars}>
-        {ampVals.map((num, i) => (
-          <div className={styles.bar} style={{ height: num + "px" }} key={i} />
-        ))}
-      </div>
+      <Visualiser ampVals={ampVals} />
     </div>
   );
 }
