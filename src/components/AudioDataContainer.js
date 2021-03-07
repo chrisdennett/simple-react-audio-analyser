@@ -1,9 +1,12 @@
-import React, { useRef } from "react";
-import VisualDemo from "./VisualDemo";
+import React, { useRef, useState } from "react";
+import styles from "./audioDataContainer.module.css";
 
-const frequencyBandArray = [...Array(25).keys()];
+const totalBands = 25;
 
 export default function AudioDataContainer() {
+  const [ampVals, setAmpVals] = useState([...Array(totalBands).fill(0)]);
+  const [avgAmp, setAvgAmp] = useState(0);
+
   const audioDataRef = useRef(null);
   const audioFileRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -22,16 +25,14 @@ export default function AudioDataContainer() {
     audioDataRef.current = analyser;
   };
 
-  const onStart = () => {
-    if (!audioFileRef.current) {
-      init();
-      audioFileRef.current.play();
-    } else if (audioFileRef.current.paused) {
-      audioFileRef.current.play();
-    } else {
-      audioFileRef.current.pause();
-    }
-  };
+  function adjustFreqBandStyle(newAmplitudeData) {
+    const arr = Array.from(newAmplitudeData).slice(0, 25);
+    setAmpVals(arr);
+
+    const total = arr.reduce((runningTotal, currVal) => runningTotal + currVal);
+    const avg = total / arr.length;
+    setAvgAmp(avg);
+  }
 
   const getFrequencyData = (styleAdjuster) => {
     if (!audioDataRef.current) return;
@@ -43,13 +44,37 @@ export default function AudioDataContainer() {
     styleAdjuster(amplitudeArray);
   };
 
+  function runSpectrum() {
+    getFrequencyData(adjustFreqBandStyle);
+
+    if (!audioFileRef.current.paused) {
+      requestAnimationFrame(runSpectrum);
+    }
+  }
+
+  const onStart = () => {
+    if (!audioFileRef.current) {
+      init();
+      audioFileRef.current.play();
+      requestAnimationFrame(runSpectrum);
+    } else if (audioFileRef.current.paused) {
+      audioFileRef.current.play();
+      requestAnimationFrame(runSpectrum);
+    } else {
+      audioFileRef.current.pause();
+    }
+  };
+
   return (
     <div>
-      <VisualDemo
-        onStart={onStart}
-        frequencyBandArray={frequencyBandArray}
-        getFrequencyData={getFrequencyData}
-      />
+      <button onClick={onStart}>play / pause</button>
+      <div className={styles.bar} style={{ width: avgAmp + "px" }} />
+
+      <div className={styles.frequencyBars}>
+        {ampVals.map((num, i) => (
+          <div className={styles.bar} style={{ height: num + "px" }} key={i} />
+        ))}
+      </div>
     </div>
   );
 }
