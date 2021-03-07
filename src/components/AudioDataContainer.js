@@ -1,50 +1,56 @@
-import React from 'react';
-import VisualDemo from './VisualDemo';
-import soundFile from '../audio/GummyBearz.mp3'
+import React, { useRef } from "react";
+import VisualDemo from "./VisualDemo";
+import soundFile from "../audio/GummyBearz.mp3";
 
-class AudioDataContainer extends React.Component {
+const frequencyBandArray = [...Array(25).keys()];
 
-  constructor(props) {
-    super(props);
-    this.state = {}
-    this.frequencyBandArray = [...Array(25).keys()]
-  }
+export default function AudioDataContainer() {
+  const audioDataRef = useRef(null);
+  const audioFileRef = useRef(null);
+  const audioContextRef = useRef(null);
 
-  initializeAudioAnalyser = () => {
-    const audioFile = new Audio();
-    const audioContext = new AudioContext();
-    const source = audioContext.createMediaElementSource(audioFile);
-    const analyser = audioContext.createAnalyser();
-    audioFile.src = soundFile;
-    analyser.fftSize = 64
-    source.connect(audioContext.destination);
-    source.connect(analyser);
-    audioFile.play()
-      this.setState({
-        audioData: analyser
-      })
-  }
-
-  getFrequencyData = (styleAdjuster) => {
-    const bufferLength = this.state.audioData.frequencyBinCount;
-    const amplitudeArray = new Uint8Array(bufferLength);
-    this.state.audioData.getByteFrequencyData(amplitudeArray)
-    styleAdjuster(amplitudeArray)
-  }
-
-  render(){
-
-    return (
-      <div>
-        <VisualDemo
-          initializeAudioAnalyser={this.initializeAudioAnalyser}
-          frequencyBandArray={this.frequencyBandArray}
-          getFrequencyData={this.getFrequencyData}
-          audioData={this.state.audioData}
-        />
-      </div>
+  const init = () => {
+    audioFileRef.current = new Audio();
+    audioContextRef.current = new AudioContext();
+    const source = audioContextRef.current.createMediaElementSource(
+      audioFileRef.current
     );
-  }
-}
+    const analyser = audioContextRef.current.createAnalyser();
+    audioFileRef.current.src = soundFile;
+    analyser.fftSize = 64;
+    source.connect(audioContextRef.current.destination);
+    source.connect(analyser);
+    audioDataRef.current = analyser;
+  };
 
-export default AudioDataContainer;
+  const onStart = () => {
+    if (!audioFileRef.current) {
+      init();
+      audioFileRef.current.play();
+    } else if (audioFileRef.current.paused) {
+      audioFileRef.current.play();
+    } else {
+      audioFileRef.current.pause();
+    }
+  };
+
+  const getFrequencyData = (styleAdjuster) => {
+    if (!audioDataRef.current) return;
+
+    const bufferLength = audioDataRef.current.frequencyBinCount;
+    const amplitudeArray = new Uint8Array(bufferLength);
+    audioDataRef.current.getByteFrequencyData(amplitudeArray);
+
+    styleAdjuster(amplitudeArray);
+  };
+
+  return (
+    <div>
+      <VisualDemo
+        onStart={onStart}
+        frequencyBandArray={frequencyBandArray}
+        getFrequencyData={getFrequencyData}
+      />
+    </div>
+  );
+}
