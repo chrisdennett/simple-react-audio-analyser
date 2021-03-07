@@ -1,7 +1,13 @@
 import React, { useRef, useState } from "react";
 import styles from "./audioDataContainer.module.css";
 
-const totalBands = 25;
+/*
+fftSize
+Must be a power of 2 between 2^5 and 2^15, so one of: 
+32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, and 32768. Defaults to 2048.
+*/
+const fftSize = 32;
+const totalBands = fftSize / 2 - 1;
 
 export default function AudioDataContainer() {
   const [ampVals, setAmpVals] = useState([...Array(totalBands).fill(0)]);
@@ -19,38 +25,32 @@ export default function AudioDataContainer() {
     );
     const analyser = audioContextRef.current.createAnalyser();
     audioFileRef.current.src = "./audio/theWent-edit-2.mp3";
-    analyser.fftSize = 64;
+    analyser.fftSize = fftSize;
     source.connect(audioContextRef.current.destination);
     source.connect(analyser);
     audioDataRef.current = analyser;
   };
 
-  const getFrequencyData = () => {
-    if (!audioDataRef.current) return;
-
-    const bufferLength = audioDataRef.current.frequencyBinCount;
-    const amplitudeArray = new Uint8Array(bufferLength);
-    audioDataRef.current.getByteFrequencyData(amplitudeArray);
-
-    return amplitudeArray;
-  };
-
   function runSpectrum() {
-    const newAmplitudeData = getFrequencyData();
+    const bufferLength = audioDataRef.current.frequencyBinCount;
+    const newAmplitudeData = new Uint8Array(bufferLength);
+    audioDataRef.current.getByteFrequencyData(newAmplitudeData);
 
-    const arr = Array.from(newAmplitudeData).slice(0, 25);
+    const arr = Array.from(newAmplitudeData).slice(0, totalBands);
     setAmpVals(arr);
 
     const total = arr.reduce((runningTotal, currVal) => runningTotal + currVal);
     const avg = total / arr.length;
     setAvgAmp(avg);
 
+    requestAnimationFrame(runSpectrum);
+
     // this allows the bars to return to starting position
     // because it takes a few frames for the buffer frequencies
     // to return to zero
     // const pausedAndAtZero = audioFileRef.current.paused && avgAmp === 0;
     // if (!pausedAndAtZero) {
-    requestAnimationFrame(runSpectrum);
+    //   requestAnimationFrame(runSpectrum);
     // }
   }
 
