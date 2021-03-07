@@ -23,30 +23,36 @@ export default function AudioDataContainer({ url }) {
   const gainNode = useRef(null);
   const audioCtxRef = useRef(null);
 
-  // remove animation call on unmount
-  useEffect(() => {
-    return () => {
-      cancelAnimationFrame(requestRef.current);
+  const cleanUp = () => {
+    cancelAnimationFrame(requestRef.current);
+
+    if (audioFileRef.current) {
+      audioFileRef.current.pause();
+    }
+
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
       try {
         audioCtxRef.current.close();
       } catch (e) {
         console.log("could not close audio context >e: ", e);
       }
-    };
-  }, []); // Make sure the effect runs only once
-
-  useEffect(() => {
-    // reset everything
-    cancelAnimationFrame(requestRef.current);
-
-    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-      audioCtxRef.current.close();
     }
+
     setTotalSeconds(0);
+    setPlaySpeed(1);
     setCurrSeconds(0);
     setAmpVals([...Array(totalBands).fill(0)]);
     audioFileRef.current = null;
+  };
+
+  // RUN CLEANUP ON NEW URL...
+  useEffect(() => {
+    cleanUp();
   }, [url]);
+  // ... AND UNMOUNT
+  useEffect(() => {
+    return () => cleanUp();
+  }, []);
 
   const init = () => {
     audioFileRef.current = new Audio();
@@ -89,6 +95,8 @@ export default function AudioDataContainer({ url }) {
   }, [playSpeed]);
 
   function runSpectrum() {
+    if (!audioFileRef.current) return;
+
     if (totalSeconds === 0) {
       setTotalSeconds(audioFileRef.current.duration);
     }
