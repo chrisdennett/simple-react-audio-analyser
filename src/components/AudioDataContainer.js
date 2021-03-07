@@ -25,31 +25,33 @@ export default function AudioDataContainer() {
     audioDataRef.current = analyser;
   };
 
-  function adjustFreqBandStyle(newAmplitudeData) {
-    const arr = Array.from(newAmplitudeData).slice(0, 25);
-    setAmpVals(arr);
-
-    const total = arr.reduce((runningTotal, currVal) => runningTotal + currVal);
-    const avg = total / arr.length;
-    setAvgAmp(avg);
-  }
-
-  const getFrequencyData = (styleAdjuster) => {
+  const getFrequencyData = () => {
     if (!audioDataRef.current) return;
 
     const bufferLength = audioDataRef.current.frequencyBinCount;
     const amplitudeArray = new Uint8Array(bufferLength);
     audioDataRef.current.getByteFrequencyData(amplitudeArray);
 
-    styleAdjuster(amplitudeArray);
+    return amplitudeArray;
   };
 
   function runSpectrum() {
-    getFrequencyData(adjustFreqBandStyle);
+    const newAmplitudeData = getFrequencyData();
 
-    if (!audioFileRef.current.paused) {
-      requestAnimationFrame(runSpectrum);
-    }
+    const arr = Array.from(newAmplitudeData).slice(0, 25);
+    setAmpVals(arr);
+
+    const total = arr.reduce((runningTotal, currVal) => runningTotal + currVal);
+    const avg = total / arr.length;
+    setAvgAmp(avg);
+
+    // this allows the bars to return to starting position
+    // because it takes a few frames for the buffer frequencies
+    // to return to zero
+    // const pausedAndAtZero = audioFileRef.current.paused && avgAmp === 0;
+    // if (!pausedAndAtZero) {
+    requestAnimationFrame(runSpectrum);
+    // }
   }
 
   const onStart = () => {
