@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import "./index.css";
-import AudioDataContainer from "./components/AudioDataContainer";
 
-ReactDOM.render(<AudioDataContainer />, document.getElementById("root"));
+import "./index.css";
+import App from "./App";
+
+ReactDOM.render(<App />, document.getElementById("root"));

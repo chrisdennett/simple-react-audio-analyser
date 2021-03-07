@@ -9,43 +9,66 @@ Must be a power of 2 between 2^5 and 2^15, so one of:
 const fftSize = 32;
 const totalBands = fftSize / 2 - 1;
 
-export default function AudioDataContainer() {
+export default function AudioDataContainer({ url }) {
   const [volume, setVolume] = useState(1);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [currSeconds, setCurrSeconds] = useState(0);
   const [ampVals, setAmpVals] = useState([...Array(totalBands).fill(0)]);
 
-  const requestRef = React.useRef();
+  const requestRef = useRef();
   const audioDataRef = useRef(null);
   const audioFileRef = useRef(null);
   const gainNode = useRef(null);
+  const audioCtxRef = useRef(null);
 
   // remove animation call on unmount
   useEffect(() => {
-    return () => cancelAnimationFrame(requestRef.current);
+    return () => {
+      cancelAnimationFrame(requestRef.current);
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+      }
+    };
   }, []); // Make sure the effect runs only once
+
+  useEffect(() => {
+    // reset everything
+    cancelAnimationFrame(requestRef.current);
+
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+      audioCtxRef.current.close();
+    }
+    setTotalSeconds(0);
+    setCurrSeconds(0);
+    setAmpVals([...Array(totalBands).fill(0)]);
+    audioFileRef.current = null;
+  }, [url]);
 
   const init = () => {
     audioFileRef.current = new Audio();
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createMediaElementSource(audioFileRef.current);
-    const analyser = audioCtx.createAnalyser();
-    audioFileRef.current.src = "./audio/theWent-edit-2.mp3";
+    audioCtxRef.current = new AudioContext();
+    const source = audioCtxRef.current.createMediaElementSource(
+      audioFileRef.current
+    );
+    const analyser = audioCtxRef.current.createAnalyser();
+    audioFileRef.current.src = url;
     analyser.fftSize = fftSize;
 
-    gainNode.current = audioCtx.createGain(); // Create a gainNode reference.
-    gainNode.current.connect(audioCtx.destination);
+    gainNode.current = audioCtxRef.current.createGain(); // Create a gainNode reference.
+    gainNode.current.connect(audioCtxRef.current.destination);
     source.connect(gainNode.current);
 
     gainNode.current.gain.value = volume;
 
     source.connect(analyser);
     audioDataRef.current = analyser;
+
+    audioFileRef.current.play();
+    requestRef.current = requestAnimationFrame(runSpectrum);
   };
 
   useEffect(() => {
     if (!gainNode.current) return;
-
     gainNode.current.gain.value = volume;
   }, [volume]);
 
@@ -67,10 +90,10 @@ export default function AudioDataContainer() {
   }
 
   const onStart = () => {
+    if (!url) return;
+
     if (!audioFileRef.current) {
       init();
-      audioFileRef.current.play();
-      requestRef.current = requestAnimationFrame(runSpectrum);
     } else if (audioFileRef.current.paused) {
       audioFileRef.current.play();
     } else {
@@ -80,6 +103,11 @@ export default function AudioDataContainer() {
 
   const onScrub = (value) => {
     // audioFileRef.current.pause();
+    if (!audioFileRef.current) {
+      init();
+      audioFileRef.current.pause();
+    }
+
     audioFileRef.current.currentTime = value;
     setCurrSeconds(audioFileRef.current.currentTime);
   };
