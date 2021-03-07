@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Visualiser from "./Visualiser";
 
+// playBackRate should be between 0.5 and 4
 /*
 fftSize
 Must be a power of 2 between 2^5 and 2^15, so one of: 
@@ -10,6 +11,7 @@ const fftSize = 32;
 const totalBands = fftSize / 2 - 1;
 
 export default function AudioDataContainer({ url }) {
+  const [playSpeed, setPlaySpeed] = useState(1);
   const [volume, setVolume] = useState(1);
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [currSeconds, setCurrSeconds] = useState(0);
@@ -25,8 +27,10 @@ export default function AudioDataContainer({ url }) {
   useEffect(() => {
     return () => {
       cancelAnimationFrame(requestRef.current);
-      if (audioCtxRef.current) {
+      try {
         audioCtxRef.current.close();
+      } catch (e) {
+        console.log("could not close audio context >e: ", e);
       }
     };
   }, []); // Make sure the effect runs only once
@@ -67,10 +71,22 @@ export default function AudioDataContainer({ url }) {
     requestRef.current = requestAnimationFrame(runSpectrum);
   };
 
+  // listen for volume change to set gain
   useEffect(() => {
     if (!gainNode.current) return;
     gainNode.current.gain.value = volume;
   }, [volume]);
+
+  // listen for speed change to set gain
+  useEffect(() => {
+    if (!audioFileRef.current) return;
+
+    try {
+      audioFileRef.current.playbackRate = playSpeed;
+    } catch (error) {
+      console.log("Playback Rate not supported> Error: " + error.message);
+    }
+  }, [playSpeed]);
 
   function runSpectrum() {
     if (totalSeconds === 0) {
@@ -112,9 +128,31 @@ export default function AudioDataContainer({ url }) {
     setCurrSeconds(audioFileRef.current.currentTime);
   };
 
+  const onSpeedScrub = (value) => {
+    // audioFileRef.current.pause();
+    if (!audioFileRef.current) {
+      init();
+      audioFileRef.current.pause();
+    }
+
+    setPlaySpeed(parseFloat(value).toFixed(1));
+  };
+
   return (
     <div>
       <button onClick={onStart}>play / pause</button>
+      Speed:
+      <input
+        type="range"
+        min={0.5}
+        max={2}
+        step={0.1}
+        value={playSpeed}
+        onChange={(e) => onSpeedScrub(e.target.value)}
+        // onMouseUp={onScrubEnd}
+        // onKeyUp={onScrubEnd}
+      />
+      Position:
       <input
         type="range"
         min="0"
