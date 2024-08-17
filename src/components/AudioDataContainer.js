@@ -11,10 +11,10 @@ const fftSize = 32;
 const totalBands = fftSize / 2 - 1;
 
 export default function AudioDataContainer({ url }) {
-  const [playSpeed, setPlaySpeed] = useState(1);
   const [volume, setVolume] = useState(1);
-  const [totalSeconds, setTotalSeconds] = useState(0);
   const [currSeconds, setCurrSeconds] = useState(0);
+  const [playSpeed, setPlaySpeed] = useState(1);
+  const [totalSeconds, setTotalSeconds] = useState(0);
   const [ampVals, setAmpVals] = useState([...Array(totalBands).fill(0)]);
 
   const requestRef = useRef();
